@@ -5,7 +5,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use gpui::{Element, ElementId, IntoElement, Stateful, point, px, size};
+use gpui::{Element, ElementId, IntoElement, Stateful, TransformationMatrix, point, px, size};
 
 use crate::Easing;
 
@@ -24,6 +24,7 @@ pub struct MotionBuilder {
     pub duration: Duration,
     pub easing: Easing,
     pub scale: Option<f32>,
+    pub rotate: Option<f32>,
 }
 
 impl Default for MotionBuilder {
@@ -35,6 +36,7 @@ impl Default for MotionBuilder {
             duration: Duration::from_millis(300),
             easing: Easing::EaseOutCubic,
             scale: None,
+            rotate: None,
         }
     }
 }
@@ -74,6 +76,18 @@ impl MotionBuilder {
         self.scale = Some(scale);
         self
     }
+
+    /// Set the target rotation in degrees.
+    pub fn rotate(mut self, degrees: f32) -> Self {
+        self.rotate = Some(degrees * std::f32::consts::PI / 180.0);
+        self
+    }
+
+    /// Set the target rotation in radians.
+    pub fn rotate_radians(mut self, radians: f32) -> Self {
+        self.rotate = Some(radians);
+        self
+    }
 }
 
 /// An element wrapper that drives animated property transitions.
@@ -91,6 +105,7 @@ pub struct Motion<E> {
     current_x: f32,
     current_y: f32,
     current_scale: f32,
+    current_rotate: f32,
 }
 
 /// Extension trait that adds [`.motion()`](MotionExt::motion) to elements with an ID.
@@ -110,6 +125,7 @@ pub trait MotionExt: Sized {
             current_x: 0.0,
             current_y: 0.0,
             current_scale: 1.0,
+            current_rotate: 0.0,
         }
     }
 }
@@ -186,6 +202,10 @@ impl<E: Element> Element for Motion<E> {
         if let Some(target) = self.config.scale {
             self.current_scale = self.animate_property("scale", target, 1.0, &base_id, window, cx);
         }
+        if let Some(target) = self.config.rotate {
+            self.current_rotate =
+                self.animate_property("rotate", target, 0.0, &base_id, window, cx);
+        }
 
         // Offset affects both hit testing (prepaint) and rendering (paint).
         let offset = point(px(self.current_x), px(self.current_y));
@@ -213,32 +233,41 @@ impl<E: Element> Element for Motion<E> {
         };
 
         let offset = point(px(self.current_x), px(self.current_y));
-        let offset_bounds = bounds + offset;
+        let paint_bounds = bounds + offset;
 
-        // Scale bounds from center — equivalent to a GPU transform for uniform scale.
+        // Build a single transform that combines scale and rotation.
+        // Both are applied around the element center by paint_quad.
         let scale = self.current_scale;
-        let paint_bounds = if (scale - 1.0).abs() > f32::EPSILON {
-            let c = offset_bounds.center();
-            let w = offset_bounds.size.width * scale;
-            let h = offset_bounds.size.height * scale;
-            gpui::Bounds {
-                origin: point(c.x - w * 0.5, c.y - h * 0.5),
-                size: size(w, h),
-            }
-        } else {
-            offset_bounds
-        };
+        let rotate = self.current_rotate;
+        let needs_xform = (scale - 1.0).abs() > f32::EPSILON || rotate.abs() > f32::EPSILON;
 
         window.with_element_opacity(opacity, |window| {
-            self.inner.paint(
-                id,
-                inspector_id,
-                paint_bounds,
-                request_layout,
-                prepaint,
-                window,
-                cx,
-            );
+            if needs_xform {
+                let xform = TransformationMatrix::unit()
+                    .scale(size(scale, scale))
+                    .rotate(gpui::radians(rotate));
+                window.with_element_transform(xform, |window| {
+                    self.inner.paint(
+                        id,
+                        inspector_id,
+                        paint_bounds,
+                        request_layout,
+                        prepaint,
+                        window,
+                        cx,
+                    );
+                })
+            } else {
+                self.inner.paint(
+                    id,
+                    inspector_id,
+                    paint_bounds,
+                    request_layout,
+                    prepaint,
+                    window,
+                    cx,
+                );
+            }
         });
     }
 }
