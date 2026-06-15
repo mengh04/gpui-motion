@@ -26,12 +26,9 @@ impl Render for DemoView {
                     .rounded_md()
                     .bg(gpui::black())
                     .motion(|m| {
-                        m.opacity(0.2)
-                            .x(200.)
+                        m.initial(|s| s.opacity(0.0).y(-300.0))
+                            .animate(|s| s.opacity(1.0).y(300.0).rotate(360.))
                             .duration(Duration::from_millis(5000))
-                            .scale(2.)
-                            .rotate(120.)
-                            .easing(Easing::EaseOutBounce)
                     }),
             )
     }
