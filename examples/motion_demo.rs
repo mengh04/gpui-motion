@@ -27,8 +27,9 @@ impl Render for DemoView {
                     .bg(gpui::black())
                     .motion(|m| {
                         m.opacity(0.2)
-                            .x(400.)
+                            // .x(400.)
                             .duration(Duration::from_millis(1000))
+                            .scale(3.0)
                             .easing(Easing::EaseOutBounce)
                     }),
             )

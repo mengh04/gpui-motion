@@ -5,7 +5,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use gpui::{Element, ElementId, IntoElement, Stateful, point, px};
+use gpui::{Element, ElementId, IntoElement, Stateful, point, px, size};
 
 use crate::Easing;
 
@@ -23,6 +23,7 @@ pub struct MotionBuilder {
     pub y: Option<f32>,
     pub duration: Duration,
     pub easing: Easing,
+    pub scale: Option<f32>,
 }
 
 impl Default for MotionBuilder {
@@ -33,6 +34,7 @@ impl Default for MotionBuilder {
             y: None,
             duration: Duration::from_millis(300),
             easing: Easing::EaseOutCubic,
+            scale: None,
         }
     }
 }
@@ -67,6 +69,11 @@ impl MotionBuilder {
         self.easing = easing;
         self
     }
+
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = Some(scale);
+        self
+    }
 }
 
 /// An element wrapper that drives animated property transitions.
@@ -83,6 +90,7 @@ pub struct Motion<E> {
     current_opacity: f32,
     current_x: f32,
     current_y: f32,
+    current_scale: f32,
 }
 
 /// Extension trait that adds [`.motion()`](MotionExt::motion) to elements with an ID.
@@ -101,6 +109,7 @@ pub trait MotionExt: Sized {
             current_opacity: 1.0,
             current_x: 0.0,
             current_y: 0.0,
+            current_scale: 1.0,
         }
     }
 }
@@ -174,6 +183,9 @@ impl<E: Element> Element for Motion<E> {
         if let Some(target) = self.config.y {
             self.current_y = self.animate_property("y", target, 0.0, &base_id, window, cx);
         }
+        if let Some(target) = self.config.scale {
+            self.current_scale = self.animate_property("scale", target, 1.0, &base_id, window, cx);
+        }
 
         // Offset affects both hit testing (prepaint) and rendering (paint).
         let offset = point(px(self.current_x), px(self.current_y));
@@ -201,7 +213,21 @@ impl<E: Element> Element for Motion<E> {
         };
 
         let offset = point(px(self.current_x), px(self.current_y));
-        let paint_bounds = bounds + offset;
+        let offset_bounds = bounds + offset;
+
+        // Scale bounds from center — equivalent to a GPU transform for uniform scale.
+        let scale = self.current_scale;
+        let paint_bounds = if (scale - 1.0).abs() > f32::EPSILON {
+            let c = offset_bounds.center();
+            let hw = offset_bounds.size.width * scale * 0.5;
+            let hh = offset_bounds.size.height * scale * 0.5;
+            gpui::Bounds {
+                origin: point(c.x - hw, c.y - hh),
+                size: size(hw * 2.0, hh * 2.0),
+            }
+        } else {
+            offset_bounds
+        };
 
         window.with_element_opacity(opacity, |window| {
             self.inner.paint(
