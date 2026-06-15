@@ -23,14 +23,14 @@ impl Render for DemoView {
                 div()
                     .id("animated-box")
                     .size(px(96.))
-                    // .rounded_md()
+                    .rounded_md()
                     .bg(gpui::black())
                     .motion(|m| {
                         m.opacity(0.2)
                             .x(200.)
-                            .duration(Duration::from_millis(1000))
+                            .duration(Duration::from_millis(5000))
                             .scale(2.)
-                            .rotate(60.)
+                            .rotate(120.)
                             .easing(Easing::EaseOutBounce)
                     }),
             )
