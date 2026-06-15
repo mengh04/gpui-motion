@@ -7,7 +7,7 @@ use gpui::{
     Window, WindowBounds, WindowOptions, div, px, size,
 };
 
-use gpui_motion::{Easing, MotionExt};
+use gpui_motion::MotionExt;
 
 struct DemoView;
 
@@ -26,8 +26,7 @@ impl Render for DemoView {
                     .rounded_md()
                     .bg(gpui::black())
                     .motion(|m| {
-                        m.initial(|s| s.opacity(0.0).y(-300.0))
-                            .animate(|s| s.opacity(1.0).y(300.0).rotate(360.))
+                        m.animate(|s| s.opacity(1.0).y(300.0).rotate(360.))
                             .duration(Duration::from_millis(5000))
                     }),
             )

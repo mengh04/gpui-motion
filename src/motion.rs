@@ -180,7 +180,7 @@ impl MotionBuilder {
 ///    scale, and rotation before painting the inner element.
 pub struct Motion<E> {
     inner: E,
-    config: MotionBuilder,
+    builder: MotionBuilder,
     current_opacity: f32,
     current_x: f32,
     current_y: f32,
@@ -198,19 +198,23 @@ pub trait MotionExt: Sized {
     /// The closure receives a [`MotionBuilder`] and should return the
     /// desired target values via chainable builder methods.
     fn motion(self, f: impl FnOnce(MotionBuilder) -> MotionBuilder) -> Motion<Self> {
-        let config = f(MotionBuilder::default());
+        let builder = f(MotionBuilder::default());
 
         // Start from the initial state if one was provided, otherwise
         // use the neutral defaults.
-        let init_opacity = config
+        let init_opacity = builder
             .initial
             .as_ref()
             .and_then(|i| i.opacity)
             .unwrap_or(1.0);
-        let init_x = config.initial.as_ref().and_then(|i| i.x).unwrap_or(0.0);
-        let init_y = config.initial.as_ref().and_then(|i| i.y).unwrap_or(0.0);
-        let init_scale = config.initial.as_ref().and_then(|i| i.scale).unwrap_or(1.0);
-        let init_rotate = config
+        let init_x = builder.initial.as_ref().and_then(|i| i.x).unwrap_or(0.0);
+        let init_y = builder.initial.as_ref().and_then(|i| i.y).unwrap_or(0.0);
+        let init_scale = builder
+            .initial
+            .as_ref()
+            .and_then(|i| i.scale)
+            .unwrap_or(1.0);
+        let init_rotate = builder
             .initial
             .as_ref()
             .and_then(|i| i.rotate)
@@ -218,7 +222,7 @@ pub trait MotionExt: Sized {
 
         Motion {
             inner: self,
-            config,
+            builder,
             current_opacity: init_opacity,
             current_x: init_x,
             current_y: init_y,
@@ -244,9 +248,9 @@ impl<E: Element> Motion<E> {
         cx: &mut gpui::App,
     ) -> T {
         let key = ElementId::NamedChild(Arc::new(base_id.clone()), key_suffix.into());
-        let easing = self.config.easing;
+        let easing = self.builder.easing;
         let t = window
-            .use_keyed_transition(key, cx, self.config.duration, |_, _| start.clone())
+            .use_keyed_transition(key, cx, self.builder.duration, |_, _| start.clone())
             .with_easing(move |t| crate::easing::apply(easing, t));
         t.update(cx, |val, _| *val = target);
         t.evaluate(window, cx).clone()
@@ -287,7 +291,7 @@ impl<E: Element> Element for Motion<E> {
         let base_id = self.inner.id().unwrap();
 
         // Evaluate each animated property and cache for paint.
-        if let Some(target) = self.config.animate.as_ref().and_then(|a| a.opacity) {
+        if let Some(target) = self.builder.animate.as_ref().and_then(|a| a.opacity) {
             self.current_opacity = self.animate_property(
                 "opacity",
                 target,
@@ -297,19 +301,19 @@ impl<E: Element> Element for Motion<E> {
                 cx,
             );
         }
-        if let Some(target) = self.config.animate.as_ref().and_then(|a| a.x) {
+        if let Some(target) = self.builder.animate.as_ref().and_then(|a| a.x) {
             self.current_x =
                 self.animate_property("x", target, self.current_x, &base_id, window, cx);
         }
-        if let Some(target) = self.config.animate.as_ref().and_then(|a| a.y) {
+        if let Some(target) = self.builder.animate.as_ref().and_then(|a| a.y) {
             self.current_y =
                 self.animate_property("y", target, self.current_y, &base_id, window, cx);
         }
-        if let Some(target) = self.config.animate.as_ref().and_then(|a| a.scale) {
+        if let Some(target) = self.builder.animate.as_ref().and_then(|a| a.scale) {
             self.current_scale =
                 self.animate_property("scale", target, self.current_scale, &base_id, window, cx);
         }
-        if let Some(target) = self.config.animate.as_ref().and_then(|a| a.rotate) {
+        if let Some(target) = self.builder.animate.as_ref().and_then(|a| a.rotate) {
             self.current_rotate =
                 self.animate_property("rotate", target, self.current_rotate, &base_id, window, cx);
         }
