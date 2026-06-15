@@ -17,7 +17,7 @@ use crate::Easing;
 /// .motion(|m| m.opacity(0.5).x(100.0).duration(Duration::from_millis(500)))
 /// ```
 #[derive(Debug, Clone)]
-pub struct MotionConfig {
+pub struct MotionBuilder {
     pub opacity: Option<f32>,
     pub x: Option<f32>,
     pub y: Option<f32>,
@@ -25,7 +25,7 @@ pub struct MotionConfig {
     pub easing: Easing,
 }
 
-impl Default for MotionConfig {
+impl Default for MotionBuilder {
     fn default() -> Self {
         Self {
             opacity: None,
@@ -37,7 +37,7 @@ impl Default for MotionConfig {
     }
 }
 
-impl MotionConfig {
+impl MotionBuilder {
     /// Set the target opacity (0.0–1.0).
     pub fn opacity(mut self, opacity: f32) -> Self {
         self.opacity = Some(opacity);
@@ -79,7 +79,7 @@ impl MotionConfig {
 ///    before painting the inner element.
 pub struct Motion<E> {
     inner: E,
-    config: MotionConfig,
+    config: MotionBuilder,
     current_opacity: f32,
     current_x: f32,
     current_y: f32,
@@ -92,12 +92,12 @@ pub struct Motion<E> {
 pub trait MotionExt: Sized {
     /// Wrap this element with an animated property transition.
     ///
-    /// The closure receives a [`MotionConfig`] and should return the
+    /// The closure receives a [`MotionBuilder`] and should return the
     /// desired target values via chainable builder methods.
-    fn motion(self, f: impl FnOnce(MotionConfig) -> MotionConfig) -> Motion<Self> {
+    fn motion(self, f: impl FnOnce(MotionBuilder) -> MotionBuilder) -> Motion<Self> {
         Motion {
             inner: self,
-            config: f(MotionConfig::default()),
+            config: f(MotionBuilder::default()),
             current_opacity: 1.0,
             current_x: 0.0,
             current_y: 0.0,
@@ -232,19 +232,19 @@ mod tests {
 
     #[test]
     fn config_default_duration_is_300ms() {
-        let c = MotionConfig::default();
+        let c = MotionBuilder::default();
         assert_eq!(c.duration, Duration::from_millis(300));
     }
 
     #[test]
     fn config_default_easing_is_ease_out_cubic() {
-        let c = MotionConfig::default();
+        let c = MotionBuilder::default();
         assert_eq!(c.easing, Easing::EaseOutCubic);
     }
 
     #[test]
     fn config_default_no_properties_animated() {
-        let c = MotionConfig::default();
+        let c = MotionBuilder::default();
         assert!(c.opacity.is_none());
         assert!(c.x.is_none());
         assert!(c.y.is_none());
@@ -252,37 +252,37 @@ mod tests {
 
     #[test]
     fn config_builder_sets_opacity() {
-        let c = MotionConfig::default().opacity(0.5);
+        let c = MotionBuilder::default().opacity(0.5);
         assert_eq!(c.opacity, Some(0.5));
     }
 
     #[test]
     fn config_builder_sets_x() {
-        let c = MotionConfig::default().x(100.0);
+        let c = MotionBuilder::default().x(100.0);
         assert_eq!(c.x, Some(100.0));
     }
 
     #[test]
     fn config_builder_sets_y() {
-        let c = MotionConfig::default().y(50.0);
+        let c = MotionBuilder::default().y(50.0);
         assert_eq!(c.y, Some(50.0));
     }
 
     #[test]
     fn config_builder_sets_duration() {
-        let c = MotionConfig::default().duration(Duration::from_millis(500));
+        let c = MotionBuilder::default().duration(Duration::from_millis(500));
         assert_eq!(c.duration, Duration::from_millis(500));
     }
 
     #[test]
     fn config_builder_sets_easing() {
-        let c = MotionConfig::default().easing(Easing::EaseInBack);
+        let c = MotionBuilder::default().easing(Easing::EaseInBack);
         assert_eq!(c.easing, Easing::EaseInBack);
     }
 
     #[test]
     fn config_builder_chains_multiple_properties() {
-        let c = MotionConfig::default()
+        let c = MotionBuilder::default()
             .opacity(0.3)
             .x(200.0)
             .y(100.0)
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn config_is_clone() {
-        let c1 = MotionConfig::default().opacity(0.5).x(100.0);
+        let c1 = MotionBuilder::default().opacity(0.5).x(100.0);
         let c2 = c1.clone();
         assert_eq!(c1.opacity, c2.opacity);
         assert_eq!(c1.x, c2.x);

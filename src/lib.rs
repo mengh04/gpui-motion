@@ -18,5 +18,5 @@ pub mod motion;
 pub mod tween;
 
 pub use easing::Easing;
-pub use motion::{MotionConfig, MotionExt};
+pub use motion::{MotionBuilder, MotionExt};
 pub use tween::Tween;
