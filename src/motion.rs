@@ -219,11 +219,11 @@ impl<E: Element> Element for Motion<E> {
         let scale = self.current_scale;
         let paint_bounds = if (scale - 1.0).abs() > f32::EPSILON {
             let c = offset_bounds.center();
-            let hw = offset_bounds.size.width * scale * 0.5;
-            let hh = offset_bounds.size.height * scale * 0.5;
+            let w = offset_bounds.size.width * scale;
+            let h = offset_bounds.size.height * scale;
             gpui::Bounds {
-                origin: point(c.x - hw, c.y - hh),
-                size: size(hw * 2.0, hh * 2.0),
+                origin: point(c.x - w * 0.5, c.y - h * 0.5),
+                size: size(w, h),
             }
         } else {
             offset_bounds
